@@ -1,0 +1,538 @@
+.transcriber-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 30px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.app-header h1 {
+  margin: 0 0 10px;
+  color: #2c3e50;
+}
+
+.app-header p {
+  margin: 0;
+  color: #555;
+  font-size: 1.1rem;
+}
+
+/* Settings container and button */
+.settings-container {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 100; /* Ensure it's above other elements */
+}
+
+.settings-button {
+  display: flex;
+  align-items: center;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #444;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Add subtle shadow for better visibility */
+}
+
+.settings-button.api-configured {
+  background-color: rgba(40, 167, 69, 0.1);
+  border-color: rgba(40, 167, 69, 0.3);
+  color: #28a745;
+}
+
+.settings-button.api-missing {
+  background-color: rgba(220, 53, 69, 0.1);
+  border-color: rgba(220, 53, 69, 0.3);
+  color: #dc3545;
+}
+
+.settings-button:hover {
+  background-color: #e9ecef;
+  transform: translateY(-1px); /* Slight lift effect on hover */
+}
+
+.settings-button.api-configured:hover {
+  background-color: rgba(40, 167, 69, 0.15);
+}
+
+.settings-button.api-missing:hover {
+  background-color: rgba(220, 53, 69, 0.15);
+}
+
+.settings-button:active {
+  transform: translateY(0); /* Press effect */
+  background-color: #dee2e6;
+}
+
+.settings-button svg {
+  margin-right: 8px;
+}
+
+.api-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background-color: #dc3545;
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: bold;
+  margin-left: 8px;
+  box-shadow: 0 0 0 2px #f8f9fa;
+  animation: pulse 2s infinite;
+}
+
+.active-service-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.1);
+  color: inherit;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 8px;
+  padding: 2px 6px;
+}
+
+.api-configured .active-service-badge {
+  background-color: rgba(40, 167, 69, 0.2);
+}
+
+.api-missing .active-service-badge {
+  background-color: rgba(220, 53, 69, 0.2);
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* API Settings Popup */
+.api-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7); /* Darker overlay for better visibility */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999; /* Higher z-index to ensure it's above everything */
+  animation: fadeIn 0.2s ease-out;
+  /* Added important to ensure it's not overridden */
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.api-popup {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3); /* Stronger shadow for more visibility */
+  animation: slideIn 0.3s ease-out;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10000; /* Even higher z-index */
+  /* Ensure visibility */
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.popup-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #2c3e50;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.close-button:hover {
+  color: #333;
+}
+
+.popup-content {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.api-instructions {
+  margin-top: 15px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.api-instructions p {
+  margin-bottom: 10px;
+}
+
+.api-instructions ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* Input method toggle */
+.input-method-toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.toggle-button {
+  padding: 10px 16px;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  color: #555;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.toggle-button:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.toggle-button.active {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #4a90e2;
+}
+
+.audio-input-container {
+  margin-bottom: 20px;
+}
+
+/* Process button */
+.process-button-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.process-button {
+  padding: 12px 24px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.process-button:hover {
+  background-color: #357ac0;
+}
+
+.process-button:disabled {
+  background-color: #a0c3e8;
+  cursor: not-allowed;
+}
+
+.api-key-notice {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background-color: #fff3cd;
+  color: #856404;
+  border-radius: 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #0d6efd;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: #0a58ca;
+}
+
+/* Progress bar */
+.processing-progress {
+  margin: 20px 0;
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: #f1f1f1;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #4a90e2;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+}
+
+/* Error message */
+.error-message {
+  margin: 20px 0;
+  padding: 12px 16px;
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  white-space: pre-line;
+}
+
+/* Results section */
+.results-section {
+  margin-top: 30px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .input-method-toggle {
+    flex-wrap: wrap;
+  }
+  
+  .toggle-button {
+    flex: 1 0 33%;
+    margin-bottom: 5px;
+  }
+  
+  .toggle-button:first-child {
+    border-radius: 4px 0 0 0;
+  }
+  
+  .toggle-button:nth-child(3) {
+    border-radius: 0 4px 0 0;
+  }
+  
+  .toggle-button:last-child {
+    border-radius: 0 0 4px 4px;
+  }
+}
+
+/* API status bar */
+.api-status-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 8px 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.api-status-indicator {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.api-status-indicator.configured {
+  color: #28a745;
+}
+
+.api-status-indicator.configured::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #28a745;
+  margin-right: 6px;
+}
+
+.api-status-indicator.missing {
+  color: #dc3545;
+}
+
+.api-status-indicator.missing::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #dc3545;
+  margin-right: 6px;
+}
+
+.configure-api-button {
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.configure-api-button:hover {
+  background-color: #357ac0;
+}
+
+/* Ensure modal is always visible */
+body.modal-open {
+  overflow: hidden !important;
+}
+
+/* Enhanced styles to ensure modal visibility */
+.api-popup-overlay {
+  display: flex !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  z-index: 999999 !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.api-popup {
+  display: flex !important;
+  flex-direction: column !important;
+  background-color: white !important;
+  border-radius: 8px !important;
+  padding: 0 !important;
+  max-width: 600px !important;
+  width: 90% !important;
+  max-height: 90vh !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+  z-index: 1000000 !important;
+}
+
+/* Inline API Form */
+.inline-api-form {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.inline-api-form h3 {
+  margin-top: 0;
+  color: #2c3e50;
+  font-size: 18px;
+}
+
+.inline-form-controls {
+  margin: 15px 0;
+}
+
+.inline-form-controls input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: 15px;
+}
+
+.inline-form-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.inline-form-buttons button {
+  padding: 8px 16px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.inline-form-buttons button:nth-child(2) {
+  background-color: #f8f9fa;
+  color: #444;
+  border: 1px solid #ddd;
+}
+
+.inline-form-buttons button:last-child {
+  background-color: #f8f9fa;
+  color: #444;
+  border: 1px solid #ddd;
+  margin-left: auto;
+}
+
+.inline-api-form a {
+  color: #4a90e2;
+  text-decoration: none;
+}
+
+.inline-api-form a:hover {
+  text-decoration: underline;
+} 
