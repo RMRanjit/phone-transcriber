@@ -1,70 +1,170 @@
-# Getting Started with Create React App
+# Phone Transcriber
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A web application that transcribes phone calls or audio recordings, providing transcripts with speaker diarization and AI-generated summaries.
 
-## Available Scripts
+## What is this App?
 
-In the project directory, you can run:
+Phone Transcriber is a React-based web application designed to make transcribing phone conversations or audio recordings simple and efficient. It offers:
 
-### `npm start`
+- Audio recording and file upload capabilities
+- Real-time or batch transcription of audio
+- Speaker identification (diarization)
+- AI-generated summaries with action items
+- Support for multiple transcription services
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+The application is perfect for professionals who need to keep records of phone conversations, meetings, or interviews, providing both accurate transcripts and concise summaries.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Design
 
-### `npm test`
+The application follows a modern, intuitive design that mimics a phone call interface. The main components include:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **Call Interface**: A phone-like UI with action buttons (ANSWER, MUTE, HOLD, RESET, VIDEO CALL)
+- **Transcription Panel**: Real-time display of transcribed text with speaker identification
+- **Cognition AI Panel**: Shows sentiment analysis and other AI-derived insights
+- **Settings Modal**: Configuration for API keys and transcription service selection
+- **Tabbed Interface**: Easily toggle between transcript and summary views
 
-### `npm run build`
+### Code Organization
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+The codebase is structured as follows:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```
+src/
+├── components/         # React UI components
+├── services/           # API service integrations
+│   ├── assemblyAIService.js     # AssemblyAI integration
+│   ├── openaiService.js         # OpenAI Whisper integration
+│   ├── googleTranscribeService.js # Google Speech-to-Text integration
+│   └── transcriptionServiceManager.js # Service abstraction layer
+├── utils/              # Utility functions
+├── hooks/              # Custom React hooks
+├── fallbackModal.js    # Vanilla JS implementation for settings modal
+└── App.js              # Main application component
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+The application uses a service-oriented architecture that separates UI components from API integrations. The `transcriptionServiceManager.js` serves as an abstraction layer that standardizes the interface to different transcription services.
 
-### `npm run eject`
+## Features
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Transcription Services
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+- **AssemblyAI**: High-quality transcription with advanced speaker diarization
+- **OpenAI Whisper**: Accurate transcription with good performance
+- **Google Speech-to-Text**: Excellent for specific use cases
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Audio Input Methods
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+- Direct microphone recording
+- Audio file upload (MP3, WAV, WebM formats supported)
+- Multiple fallback recording methods for cross-browser compatibility
 
-## Learn More
+### Transcript Processing
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- Real-time transcription display
+- Speaker identification (diarization)
+- Sentiment analysis
+- Time-stamped text segments
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Summary Generation
 
-### Code Splitting
+- AI-generated summaries using OpenAI
+- Structured format with clear summary section
+- Actionable items highlighted in a separate section
+- Copy and export functionality
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### User Interface
 
-### Analyzing the Bundle Size
+- Phone call-like interface
+- Tabbed view for transcript and summary
+- Progress indicators during processing
+- Modal for API key and service configuration
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Extensibility
 
-### Making a Progressive Web App
+The application is designed for easy extension in several ways:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### Adding New Transcription Services
 
-### Advanced Configuration
+To add a new transcription service:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+1. Create a new service file (e.g., `newService.js`) implementing the standard interface
+2. Add the service to the `services` object in `transcriptionServiceManager.js`
+3. Include any necessary UI updates to accommodate service-specific features
 
-### Deployment
+### Enhancing AI Features
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+The modular design allows for easy addition of:
 
-### `npm run build` fails to minify
+- More detailed sentiment analysis
+- Topic extraction
+- Custom formatting of transcripts and summaries
+- Additional language support
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+### UI Customization
+
+The component-based structure makes it simple to:
+
+- Add new UI themes
+- Implement alternative layouts
+- Create mobile-optimized views
+- Add new visualization options for transcript data
+
+## How to Run the App
+
+### Prerequisites
+
+- Node.js (v14 or higher)
+- npm or yarn package manager
+
+### Setup
+
+1. Clone the repository:
+
+   ```
+   git clone [repository-url]
+   cd phone-transcriber
+   ```
+
+2. Install dependencies:
+
+   ```
+   npm install
+   # or
+   yarn install
+   ```
+
+3. Create API keys for the services you want to use:
+
+   - [AssemblyAI](https://www.assemblyai.com/dashboard/signup) (free tier available)
+   - [OpenAI](https://platform.openai.com/api-keys) (required for summaries)
+   - [Google Cloud](https://console.cloud.google.com/apis/api/speech.googleapis.com) (optional)
+
+4. Start the development server:
+
+   ```
+   npm start
+   # or
+   yarn start
+   ```
+
+5. Open your browser and navigate to `http://localhost:3000`
+
+6. Configure your API keys in the settings modal (accessible via the gear icon)
+
+### Building for Production
+
+To create a production build:
+
+```
+npm run build
+# or
+yarn build
+```
+
+The build files will be created in the `build/` directory, ready to be deployed to any static site hosting service.
+
+## Troubleshooting
+
+- **Audio Recording Issues**: Ensure your browser allows microphone access and try the alternative recording methods if needed
+- **Transcription Errors**: Check that your API keys are entered correctly and that you have sufficient quota
+- **API Rate Limits**: If you encounter rate limit errors, wait a few moments before trying again
