@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { memo } from 'react';
 import './App.css';
 import TranscriberPage from './pages/TranscriberPage';
 
-function App() {
+const App = () => {
   return (
     <div className="App">
       <TranscriberPage />
     </div>
   );
-}
+};
 
-export default App;
+export default memo(App);

@@ -2,20 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react';
 import AudioRecorder from '../components/AudioRecorder';
 import AudioUploader from '../components/AudioUploader';
 import TranscriptDisplay from '../components/TranscriptDisplay';
-import ApiKeyInput from '../components/ApiKeyInput';
 import CallInterface from '../components/CallInterface';
 import { setApiKey as setOpenAIKey } from '../services/openaiService';
 import * as transcriptionService from '../services/transcriptionServiceManager';
 import { validateAudioFile, formatDuration } from '../utils/audioUtils';
 import './TranscriberPage.css';
-import ReactDOM from 'react-dom';
-import { showFallbackSettingsModal, checkApiKey } from '../fallbackModal';
+import { showFallbackSettingsModal } from '../fallbackModal';
 
 // Add a global variable to track if modal is open
 let isModalOpen = false;
 
 // Update the openSettingsModal function with better error handling
-const openSettingsModal = (handleApiKeyChange, handleServiceChange) => {
+const openSettingsModal = (handleApiKeyChange, handleServiceChange, transcriptionService, setOpenAIKey) => {
   if (isModalOpen) return; // Prevent multiple modals
   isModalOpen = true;
   
@@ -171,6 +169,7 @@ const openSettingsModal = (handleApiKeyChange, handleServiceChange) => {
           <div class="api-instructions">
             <p style="margin-top: 20px;"><strong>Important:</strong> Different transcription services have different capabilities and pricing.</p>
             <ul style="padding-left: 20px;">
+              <li><strong>Browser Speech Recognition</strong> - Free built-in transcription, no API key required. Perfect for local transcription with no costs.</li>
               <li><strong>AssemblyAI</strong> - Great transcription quality with speaker diarization.</li>
               <li><strong>OpenAI Realtime</strong> - High accuracy with streaming capabilities for faster results.</li>
               <li><strong>Google Speech-to-Text</strong> - Excellent for phone calls.</li>
@@ -441,11 +440,21 @@ const TranscriberPage = () => {
     // Initialize all API keys from localStorage
     transcriptionService.initApiKeys();
     
-    // Get the active service and update state
-    setActiveService(transcriptionService.getActiveService());
+    // Check if browser speech recognition is supported
+    const browserSupported = transcriptionService.isBrowserSpeechSupported();
+    console.log("Browser speech recognition supported:", browserSupported);
     
-    // Check if the active service has an API key
-    setApiKeySet(transcriptionService.hasApiKey());
+    // If browser speech is supported, set it as the active service for live transcription
+    if (browserSupported) {
+      transcriptionService.setActiveService('browser');
+      setActiveService('browser');
+      setApiKeySet(true); // Browser speech doesn't require an API key
+    } else {
+      // Otherwise use the previously active service
+      setActiveService(transcriptionService.getActiveService());
+      // Check if the active service has an API key
+      setApiKeySet(transcriptionService.hasApiKey());
+    }
     
     // Also check if OpenAI key is set for summarization
     const openaiKey = localStorage.getItem('openai_api_key');
@@ -454,6 +463,10 @@ const TranscriberPage = () => {
       setOpenAIKey(openaiKey);
     }
   }, []);
+
+  // Display the current active service
+  const activeServiceInfo = transcriptionService.getServiceInfo(activeService);
+  const activeServiceDisplay = activeServiceInfo.name;
 
   // Handle API key change
   const handleApiKeyChange = useCallback((key, serviceType = activeService) => {
@@ -497,7 +510,7 @@ const TranscriberPage = () => {
         // If no key, show modal after a delay
         setTimeout(() => {
           try {
-            openSettingsModal(handleApiKeyChange, handleServiceChange);
+            openSettingsModal(handleApiKeyChange, handleServiceChange, transcriptionService, setOpenAIKey);
           } catch (error) {
             console.error("Error showing initial modal, falling back:", error);
             showFallbackSettingsModal(handleApiKeyChange);
@@ -507,7 +520,7 @@ const TranscriberPage = () => {
     } catch (error) {
       console.error("Error checking API key:", error);
     }
-  }, []);
+  }, [handleApiKeyChange, handleServiceChange]);
 
   // Handle audio file from uploader or recorder
   const handleAudioReady = useCallback((file) => {
@@ -792,23 +805,20 @@ const TranscriberPage = () => {
   // Format the recording time
   const formattedCallTime = formatDuration(recordingTime);
 
-  // Update the settings button click handler to include service change handler
+  // Handle settings button click
   const handleSettingsClick = () => {
-    console.log("Settings button clicked");
-    try {
-      // Try our custom modal first
-      openSettingsModal(handleApiKeyChange, handleServiceChange);
-    } catch (error) {
-      console.error("Error with primary modal, falling back:", error);
-      try {
-        // Fall back to simpler implementation if anything goes wrong
-        showFallbackSettingsModal(handleApiKeyChange);
-      } catch (error2) {
-        console.error("Both modal approaches failed, showing inline form:", error2);
-        // Last resort - show inline form
-        setUseInlineForm(true);
-      }
+    openSettingsModal(handleApiKeyChange, handleServiceChange, transcriptionService, setOpenAIKey);
+  };
+
+  // Determine if we're using browser speech recognition
+  const usingBrowserSpeech = activeService === 'browser';
+
+  // Get the current service description for the record tab
+  const getRecordTabDescription = () => {
+    if (usingBrowserSpeech) {
+      return "Record audio using your browser's built-in speech recognition - no API key needed!";
     }
+    return "Record audio with your microphone and get a real-time transcript";
   };
 
   return (
@@ -829,7 +839,7 @@ const TranscriberPage = () => {
             </svg>
             <span>Settings</span>
             <span className="active-service-badge">
-              {transcriptionService.getServiceInfo().name}
+              {activeServiceDisplay}
             </span>
             {!apiKeySet && <span className="api-badge">!</span>}
           </button>
@@ -839,22 +849,30 @@ const TranscriberPage = () => {
       <div className="input-section">
         <div className="input-method-toggle">
           <button 
-            className={`toggle-button ${inputMethod === 'upload' ? 'active' : ''}`}
-            onClick={() => toggleInputMethod('upload')}
+            onClick={() => toggleInputMethod('upload')} 
+            className={`tab-button ${inputMethod === 'upload' ? 'active' : ''}`}
           >
-            Upload Audio
+            <i className="icon upload-icon"></i>
+            <span>Upload File</span>
+            <span className="tab-description">Upload an audio or video file for transcription</span>
           </button>
+          
           <button 
-            className={`toggle-button ${inputMethod === 'record' ? 'active' : ''}`}
-            onClick={() => toggleInputMethod('record')}
+            onClick={() => toggleInputMethod('record')} 
+            className={`tab-button ${inputMethod === 'record' ? 'active' : ''}`}
           >
-            Record Audio
+            <i className="icon microphone-icon"></i>
+            <span>Record Audio</span>
+            <span className="tab-description">{getRecordTabDescription()}</span>
           </button>
+          
           <button 
-            className={`toggle-button ${inputMethod === 'call' ? 'active' : ''}`}
-            onClick={() => toggleInputMethod('call')}
+            onClick={() => toggleInputMethod('call')} 
+            className={`tab-button ${inputMethod === 'call' ? 'active' : ''}`}
           >
-            Simulate Call
+            <i className="icon phone-icon"></i>
+            <span>Simulate Call</span>
+            <span className="tab-description">Simulate a phone call with transcription</span>
           </button>
         </div>
         

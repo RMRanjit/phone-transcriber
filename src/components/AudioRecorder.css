@@ -167,6 +167,11 @@
   color: #721c24;
 }
 
+.status-badge.disconnected {
+  background-color: #999;
+  color: white;
+}
+
 .transcript-segments {
   margin-top: 10px;
 }
@@ -250,4 +255,55 @@
   .verify-buttons {
     flex-direction: column;
   }
+}
+
+.listening-indicator {
+  display: inline-block;
+  color: #4CAF50;
+  animation: pulse 1.5s infinite;
+  margin-left: 5px;
+  font-size: 16px;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+.debug-info {
+  margin-top: 10px;
+  color: #666;
+  font-size: 12px;
+  text-align: right;
+  border-top: 1px solid #eee;
+  padding-top: 5px;
+}
+
+.browser-rec-badge {
+  background-color: #28a745;
+  color: white;
+  font-size: 11px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  margin-left: 5px;
+  font-weight: normal;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.browser-rec-note {
+  display: block;
+  font-size: 13px;
+  color: #28a745;
+  margin-top: 5px;
+  padding: 5px 10px;
+  background-color: rgba(40, 167, 69, 0.1);
+  border-radius: 4px;
 } 

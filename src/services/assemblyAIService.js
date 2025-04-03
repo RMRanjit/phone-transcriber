@@ -278,31 +278,73 @@ export const processAudioComplete = async (audioFile) => {
 export const connectRealtimeStream = (onMessage, onError) => {
   if (!API_KEY) throw new Error('API key not set');
 
-  // Create a WebSocket connection
-  const socket = new WebSocket('wss://api.assemblyai.com/v2/realtime/ws?sample_rate=16000');
-  
-  // Connection opened
-  socket.onopen = () => {
-    console.log('AssemblyAI WebSocket connection established');
+  try {
+    console.log('Establishing AssemblyAI WebSocket connection...');
     
-    // Send the API key for authentication
-    socket.send(JSON.stringify({ token: API_KEY }));
-  };
-  
-  // Listen for messages
-  socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    onMessage(data);
-  };
-  
-  // Handle errors
-  socket.onerror = (error) => {
-    console.error('AssemblyAI WebSocket error:', error);
+    // Create a WebSocket connection with the matching sample rate used in recording (44.1kHz)
+    const socket = new WebSocket('wss://api.assemblyai.com/v2/realtime/ws?sample_rate=44100');
+    
+    // Connection opened
+    socket.onopen = () => {
+      console.log('AssemblyAI WebSocket connection established');
+      
+      // Send the API key for authentication
+      const authMessage = JSON.stringify({ token: API_KEY });
+      console.log('Sending authentication message');
+      socket.send(authMessage);
+      
+      // Immediately notify that connection is established
+      onMessage({
+        message_type: 'Connected',
+        message: 'WebSocket connection established'
+      });
+      
+      // Send configuration with a slight delay to ensure token is processed
+      setTimeout(() => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          const startMessage = JSON.stringify({
+            message_type: "StartRecognition",
+            audio_format: "pcm_s16le",
+            sample_rate: 44100
+          });
+          console.log('Sending AssemblyAI configuration:', startMessage);
+          socket.send(startMessage);
+        }
+      }, 500);
+    };
+    
+    // Listen for messages
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log(`AssemblyAI message: ${data.message_type}`, data);
+        
+        // Handle connection errors
+        if (data.message_type === 'SessionBegins') {
+          console.log('AssemblyAI session begun successfully');
+        } else if (data.message_type === 'Error') {
+          console.error('AssemblyAI error:', data.error || 'Unknown error');
+        }
+        
+        onMessage(data);
+      } catch (error) {
+        console.error('Error parsing AssemblyAI message:', error, event.data);
+      }
+    };
+    
+    // Handle errors
+    socket.onerror = (error) => {
+      console.error('AssemblyAI WebSocket error:', error);
+      if (onError) onError(error);
+    };
+    
+    // Return the socket for later use (closing, etc.)
+    return socket;
+  } catch (error) {
+    console.error('Error creating AssemblyAI WebSocket:', error);
     if (onError) onError(error);
-  };
-  
-  // Return the socket for later use (closing, etc.)
-  return socket;
+    throw error;
+  }
 };
 
 // Process diarized transcript from AssemblyAI

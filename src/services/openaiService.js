@@ -9,21 +9,6 @@ let API_KEY = '';
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 10000; // Minimum 10 seconds between requests to avoid rate limits
 
-// WebSocket connection for realtime transcription
-let realtimeSocket = null;
-let realtimeListeners = [];
-
-export const setApiKey = (key) => {
-  API_KEY = key;
-};
-
-export const getHeaders = () => {
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${API_KEY}`
-  };
-};
-
 // Check if we should throttle requests
 const shouldThrottle = () => {
   const now = Date.now();
@@ -36,9 +21,25 @@ const updateRequestTime = () => {
   lastRequestTime = Date.now();
 };
 
+export const setApiKey = (key) => {
+  API_KEY = key;
+};
+
+export const getHeaders = () => {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${API_KEY}`
+  };
+};
+
 // Transcribe audio using OpenAI API
 export const transcribeAudio = async (audioFile) => {
   if (!API_KEY) throw new Error('API key not set');
+  
+  // Add throttling check
+  if (shouldThrottle()) {
+    throw new Error('Rate limit protection: Please wait before making another request.');
+  }
 
   const formData = new FormData();
   formData.append('file', audioFile);
@@ -169,6 +170,11 @@ export const processAudioInChunks = async (audioFile, onProgress, onTranscript) 
 // Generate summary and action items using OpenAI
 export const generateSummary = async (transcript) => {
   if (!API_KEY) throw new Error('API key not set');
+
+  // Add throttling check
+  if (shouldThrottle()) {
+    throw new Error('Rate limit protection: Please wait before making another request.');
+  }
 
   try {
     updateRequestTime();
@@ -385,4 +391,114 @@ export const processDiarizedTranscript = (result) => {
   }
   
   return segments;
+};
+
+// OpenAI WebSocket for real-time transcription
+export const connectRealtimeStream = (onMessage, onError) => {
+  if (!API_KEY) throw new Error('API key not set');
+
+  try {
+    console.log('Establishing OpenAI WebSocket connection simulation...');
+    
+    // OpenAI doesn't currently offer a true WebSocket API for transcription
+    // So we'll simulate one using a mock WebSocket that processes chunks
+    
+    // Create a mock WebSocket with the necessary interface
+    const mockSocket = {
+      readyState: WebSocket.OPEN,
+      chunks: [],
+      cumulativeText: '',
+      audioStart: Date.now(),
+      
+      // Simulated send method that processes audio chunks
+      send: (data) => {
+        if (typeof data === 'string') {
+          // This is a control message (like KeepAlive)
+          try {
+            const msg = JSON.parse(data);
+            if (msg.message_type === 'KeepAlive') {
+              console.log('OpenAI mock: received keep-alive ping');
+            }
+          } catch (e) {
+            console.warn('OpenAI mock: received invalid JSON message', e);
+          }
+          return;
+        }
+        
+        // For actual audio data, we would process it
+        // Since we can't send to OpenAI in real-time yet, we'll simulate
+        // by gathering chunks and periodically firing events
+        
+        mockSocket.chunks.push(data);
+        
+        // Process audio after collecting a few chunks
+        if (mockSocket.chunks.length % 5 === 0) {
+          // Simulate partial transcripts with random words
+          const words = ['hello', 'testing', 'one', 'two', 'three', 'OpenAI', 'transcription', 
+                        'is', 'working', 'now', 'can', 'you', 'hear', 'me'];
+          
+          const randomText = words[Math.floor(Math.random() * words.length)];
+          mockSocket.cumulativeText += ' ' + randomText;
+          
+          // Send a partial transcript
+          if (onMessage) {
+            onMessage({
+              message_type: 'PartialTranscript',
+              text: mockSocket.cumulativeText.trim()
+            });
+          }
+          
+          // Every ~10 chunks, send a final transcript segment
+          if (mockSocket.chunks.length % 10 === 0) {
+            const segmentText = mockSocket.cumulativeText.trim();
+            mockSocket.cumulativeText = '';
+            
+            if (onMessage) {
+              const now = Date.now();
+              onMessage({
+                message_type: 'FinalTranscript',
+                text: segmentText,
+                audio_start: mockSocket.audioStart,
+                audio_end: now
+              });
+              mockSocket.audioStart = now;
+            }
+          }
+        }
+      },
+      
+      // Close method
+      close: () => {
+        console.log('OpenAI mock WebSocket closed');
+        mockSocket.readyState = WebSocket.CLOSED;
+        if (onMessage) {
+          onMessage({
+            message_type: 'SessionTerminated',
+            status: 'closed'
+          });
+        }
+      }
+    };
+    
+    // Simulate the connection process
+    setTimeout(() => {
+      if (onMessage) {
+        onMessage({
+          message_type: 'Connected',
+          message: 'Connected to OpenAI transcription service (simulated)'
+        });
+        
+        onMessage({
+          message_type: 'SessionBegins',
+          message: 'OpenAI transcription session started (simulated)'
+        });
+      }
+    }, 500);
+    
+    return mockSocket;
+  } catch (error) {
+    console.error('Error creating OpenAI WebSocket:', error);
+    if (onError) onError(error);
+    throw error;
+  }
 }; 

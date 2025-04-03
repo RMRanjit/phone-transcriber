@@ -1,23 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 
 const TranscriptDisplay = ({ transcript, summary, isLoading, diarizedTranscript }) => {
   const [activeTab, setActiveTab] = useState('transcript');
 
-  if (isLoading) {
-    return (
-      <div className="transcript-loading">
-        <div className="loading-spinner"></div>
-        <p>Processing audio...</p>
-      </div>
-    );
-  }
-
-  if (!transcript && !summary && !diarizedTranscript) {
-    return null;
-  }
-
-  // Process summary to split into summary and action items
-  const processSummary = () => {
+  // Process summary to split into summary and action items - moved before conditionals
+  const { summaryText, actionItems } = useMemo(() => {
     if (!summary) return { summaryText: '', actionItems: [] };
 
     // Check if the summary has "Action Required" or "Action Items" sections
@@ -51,9 +38,27 @@ const TranscriptDisplay = ({ transcript, summary, isLoading, diarizedTranscript 
     }
     
     return { summaryText, actionItems };
-  };
+  }, [summary]);
 
-  const { summaryText, actionItems } = processSummary();
+  if (isLoading) {
+    return (
+      <div className="transcript-loading">
+        <div className="loading-spinner"></div>
+        <p>Processing audio...</p>
+      </div>
+    );
+  }
+
+  if (!transcript && !summary && !diarizedTranscript) {
+    return null;
+  }
+
+  // Format timestamp (seconds) to MM:SS format
+  const formatTimestamp = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
 
   // Render diarized transcript if available
   const renderDiarizedTranscript = () => {
@@ -80,13 +85,6 @@ const TranscriptDisplay = ({ transcript, summary, isLoading, diarizedTranscript 
         ))}
       </div>
     );
-  };
-
-  // Format timestamp (seconds) to MM:SS format
-  const formatTimestamp = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   return (
@@ -181,4 +179,4 @@ const TranscriptDisplay = ({ transcript, summary, isLoading, diarizedTranscript 
   );
 };
 
-export default TranscriptDisplay; 
+export default memo(TranscriptDisplay); 

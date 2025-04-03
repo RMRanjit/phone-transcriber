@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import useAudioRecorder from '../hooks/useAudioRecorder';
 import './AudioRecorder.css';
+import * as transcriptionService from '../services/transcriptionServiceManager';
 
 const AudioRecorder = ({ onAudioReady }) => {
   const {
@@ -14,7 +15,8 @@ const AudioRecorder = ({ onAudioReady }) => {
     liveTranscript,
     transcriptionEnabled,
     toggleTranscription,
-    connectionStatus
+    connectionStatus,
+    activeServiceName
   } = useAudioRecorder();
   
   const [verified, setVerified] = useState(false);
@@ -65,35 +67,47 @@ const AudioRecorder = ({ onAudioReady }) => {
         clearTimeout(timeout);
         audio.onerror = null;
         audio.oncanplaythrough = null;
+        URL.revokeObjectURL(audio.src);
       };
     }
   }, [audioFile]);
 
   // Render diarized transcript segments
   const renderLiveTranscript = () => {
-    // Always show the live transcript container when recording and transcription is enabled
-    if (!isRecording || !transcriptionEnabled) {
+    // Always show when transcription is enabled, regardless of recording state
+    if (!transcriptionEnabled) {
       return null;
     }
+
+    // Check if we're using browser transcription
+    const isBrowserTranscription = activeServiceName === 'Browser Speech Recognition';
 
     return (
       <div className="live-transcript">
         <h3>
           Live Transcript
+          {isBrowserTranscription && <span className="browser-rec-badge">Browser</span>}
           {connectionStatus === 'connected' && <span className="status-badge connected">Connected</span>}
           {connectionStatus === 'connecting' && <span className="status-badge connecting">Connecting...</span>}
           {connectionStatus === 'error' && <span className="status-badge error">Connection Error</span>}
+          {connectionStatus === 'disconnected' && <span className="status-badge disconnected">Disconnected</span>}
         </h3>
+        
+        {isBrowserTranscription && (
+          <div className="browser-rec-note">
+            Using your browser's built-in speech recognition - no API key required!
+          </div>
+        )}
         
         {connectionStatus === 'connecting' && (
           <div className="connection-message">
-            Establishing connection to AssemblyAI...
+            Establishing connection to {activeServiceName}...
           </div>
         )}
         
         {connectionStatus === 'error' && (
           <div className="error-message">
-            Failed to connect to AssemblyAI. Please check your API key and try again.
+            Failed to connect to {activeServiceName}. Please check your API key and browser console.
           </div>
         )}
         
@@ -111,11 +125,21 @@ const AudioRecorder = ({ onAudioReady }) => {
           ) : (
             <div className="empty-transcript">
               {connectionStatus === 'connected' ? 
-                <div>Waiting for speech...</div> : 
-                <div>{connectionStatus === 'connecting' ? 'Connecting...' : 'Enable transcription to see live results'}</div>
+                <div>Waiting for speech... <span className="listening-indicator">●</span></div> : 
+                <div>
+                  {connectionStatus === 'connecting' ? 'Connecting...' : 
+                   connectionStatus === 'error' ? 'Connection error' : 
+                   connectionStatus === 'disconnected' && isRecording ? 'Connecting...' :
+                   connectionStatus === 'disconnected' ? 'Start recording to connect' :
+                   'Waiting...'}
+                </div>
               }
             </div>
           )}
+        </div>
+        
+        <div className="debug-info">
+          <small>Service: {activeServiceName} | Status: {connectionStatus}</small>
         </div>
       </div>
     );
@@ -157,6 +181,14 @@ const AudioRecorder = ({ onAudioReady }) => {
                 controls 
                 src={URL.createObjectURL(audioFile)}
                 className="verification-player"
+                ref={audio => {
+                  if (audio) {
+                    audio.onloadedmetadata = () => {
+                      const urlToRevoke = audio.src;
+                      audio.addEventListener('emptied', () => URL.revokeObjectURL(urlToRevoke), { once: true });
+                    };
+                  }
+                }}
               />
               <div className="verify-buttons">
                 <button 
@@ -202,7 +234,18 @@ const AudioRecorder = ({ onAudioReady }) => {
       
       {audioFile && verified && (
         <div className="audio-preview">
-          <audio controls src={URL.createObjectURL(audioFile)} />
+          <audio 
+            controls 
+            src={URL.createObjectURL(audioFile)} 
+            ref={audio => {
+              if (audio) {
+                audio.onloadedmetadata = () => {
+                  const urlToRevoke = audio.src;
+                  audio.addEventListener('emptied', () => URL.revokeObjectURL(urlToRevoke), { once: true });
+                };
+              }
+            }}
+          />
           <div className="file-info">
             <p>Recording details: {audioFile.name} ({(audioFile.size / 1024).toFixed(1)} KB)</p>
             <p>Type: {audioFile.type || "unknown"}</p>
@@ -214,7 +257,7 @@ const AudioRecorder = ({ onAudioReady }) => {
       
       {isRecording && transcriptionEnabled && connectionStatus === 'connected' && (
         <div className="recording-tip">
-          <strong>Note:</strong> Live transcription with AssemblyAI provides real-time results.
+          <strong>Note:</strong> Live transcription with {activeServiceName} provides real-time results.
           The complete transcription with speaker detection will be processed when recording completes.
         </div>
       )}
@@ -222,4 +265,4 @@ const AudioRecorder = ({ onAudioReady }) => {
   );
 };
 
-export default AudioRecorder; 
+export default memo(AudioRecorder); 

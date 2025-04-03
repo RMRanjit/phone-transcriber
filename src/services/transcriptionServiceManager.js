@@ -1,6 +1,7 @@
 import * as assemblyAIService from './assemblyAIService';
 import * as openaiService from './openaiService';
 import * as googleTranscribeService from './googleTranscribeService';
+import * as browserTranscriptionService from './browserTranscriptionService';
 
 // Default is AssemblyAI
 let activeService = 'assemblyai';
@@ -36,6 +37,17 @@ const services = {
     keyInfoUrl: 'https://console.cloud.google.com/apis/api/speech.googleapis.com',
     supportsDiarization: true,
     supportsSummary: false
+  },
+  browser: {
+    name: 'Browser Speech Recognition',
+    service: browserTranscriptionService,
+    keyStorageName: 'browser_api_key', // Not actually used, just for compatibility
+    keyType: 'None Required',
+    keyInfoText: 'Uses your browser\'s built-in speech recognition. No API key needed.',
+    keyInfoUrl: 'https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition',
+    supportsDiarization: false,
+    supportsSummary: false,
+    noKeyRequired: true // Special flag to indicate no API key is needed
   }
 };
 
@@ -74,6 +86,11 @@ export const setApiKey = (key, serviceKey = activeService) => {
 // Initialize API keys from localStorage
 export const initApiKeys = () => {
   Object.keys(services).forEach(serviceKey => {
+    // Skip browser service which doesn't need a key
+    if (services[serviceKey].noKeyRequired) {
+      return;
+    }
+    
     const savedKey = localStorage.getItem(services[serviceKey].keyStorageName);
     if (savedKey) {
       services[serviceKey].service.setApiKey(savedKey);
@@ -83,6 +100,11 @@ export const initApiKeys = () => {
 
 // Check if the active service has an API key set
 export const hasApiKey = (serviceKey = activeService) => {
+  // Browser service doesn't require an API key
+  if (services[serviceKey]?.noKeyRequired) {
+    return true;
+  }
+  
   const savedKey = localStorage.getItem(services[serviceKey]?.keyStorageName);
   return !!savedKey && savedKey.trim() !== '';
 };
@@ -93,6 +115,42 @@ export const getServices = () => {
     id: key,
     name: services[key].name
   }));
+};
+
+// Check if browser speech recognition is supported
+export const isBrowserSpeechSupported = () => {
+  try {
+    return browserTranscriptionService.isBrowserSupported();
+  } catch (error) {
+    console.error('Error checking browser speech recognition support:', error);
+    return false;
+  }
+};
+
+// Proxy method for connectRealtimeStream - for real-time transcription
+export const connectRealtimeStream = (onMessage, onError) => {
+  // First check if browser speech recognition is supported
+  if (isBrowserSpeechSupported()) {
+    console.log('Using Browser Speech Recognition for real-time transcription');
+    return services.browser.service.connectRealtimeStream(onMessage, onError);
+  }
+  
+  // If browser speech is not supported, use the active service
+  const service = services[activeService].service;
+  
+  if (typeof service.connectRealtimeStream === 'function') {
+    console.log(`Browser speech not available, using ${services[activeService].name} for real-time transcription`);
+    return service.connectRealtimeStream(onMessage, onError);
+  } 
+  
+  // If the active service doesn't support real-time, fall back to AssemblyAI
+  if (activeService !== 'assemblyai') {
+    console.warn(`${services[activeService].name} doesn't support real-time transcription, falling back to AssemblyAI`);
+    return services.assemblyai.service.connectRealtimeStream(onMessage, onError);
+  }
+  
+  // This should never happen as AssemblyAI always has the method
+  throw new Error('No real-time transcription service available');
 };
 
 // Proxy method for uploadAudio

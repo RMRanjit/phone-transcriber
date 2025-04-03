@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, memo } from 'react';
 import { validateAudioFile } from '../utils/audioUtils';
 import './AudioUploader.css';
 
@@ -6,6 +6,7 @@ const AudioUploader = ({ onAudioReady }) => {
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [fileUrl, setFileUrl] = useState(null);
   const fileInputRef = useRef(null);
 
   // AssemblyAI supports these formats
@@ -27,6 +28,19 @@ const AudioUploader = ({ onAudioReady }) => {
   const allowedExtensions = ['wav', 'mp3', 'webm', 'ogg', 'm4a', 'mp4', 'mov'];
   
   const maxSize = 100 * 1024 * 1024; // 100MB - AssemblyAI limit
+
+  // Create object URL when file changes
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setFileUrl(url);
+      
+      // Clean up when component unmounts or file changes
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    }
+  }, [file]);
 
   const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
@@ -149,9 +163,9 @@ const AudioUploader = ({ onAudioReady }) => {
             <p>Type: {file.type}</p>
           </div>
           {file.type.includes('audio') ? (
-            <audio controls src={URL.createObjectURL(file)} />
+            <audio controls src={fileUrl} />
           ) : (
-            <video controls src={URL.createObjectURL(file)} style={{maxWidth: '100%'}} />
+            <video controls src={fileUrl} style={{maxWidth: '100%'}} />
           )}
           <button onClick={handleReset} className="reset-button">
             Choose Another File
@@ -168,4 +182,4 @@ const AudioUploader = ({ onAudioReady }) => {
   );
 };
 
-export default AudioUploader; 
+export default memo(AudioUploader); 

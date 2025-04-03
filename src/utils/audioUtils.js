@@ -99,7 +99,7 @@ export const getAvailableMimeTypes = () => {
   return ['audio/mp3', 'audio/wav', 'audio/webm'];
 };
 
-// Start recording audio with chunking for AssemblyAI
+// Start recording audio with chunking for real-time transcription
 export const startRecording = async (onDataAvailable) => {
   try {
     console.log("Starting to record audio...");
@@ -108,57 +108,48 @@ export const startRecording = async (onDataAvailable) => {
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
-        sampleRate: 44100, // Higher quality sample rate
+        // Use higher sample rate for better audio quality
+        sampleRate: 44100, 
         channelCount: 1    // Mono for better compatibility
       } 
     });
     
-    // Check actual track settings
+    // Check actual track settings and log them
     const audioTrack = stream.getAudioTracks()[0];
     if (audioTrack) {
       const settings = audioTrack.getSettings();
-      console.log("Audio track settings:", settings);
+      console.log("Actual audio track settings:", settings);
     }
     
     // Get available MIME types
     const availableMimeTypes = getAvailableMimeTypes();
     console.log("Available MIME types:", availableMimeTypes);
     
-    // Choose the best MIME type - prefer MP3 (most compatible), then WAV, then WebM
-    let mimeType = 'audio/mpeg';
+    // Choose the best MIME type for audio quality
+    let mimeType = 'audio/webm';
     if (!availableMimeTypes.includes(mimeType)) {
-      if (availableMimeTypes.includes('audio/mp3')) {
-        mimeType = 'audio/mp3';
-      } else if (availableMimeTypes.includes('audio/wav')) {
+      if (availableMimeTypes.includes('audio/wav')) {
         mimeType = 'audio/wav';
+      } else if (availableMimeTypes.includes('audio/mp3')) {
+        mimeType = 'audio/mp3';
       } else {
         mimeType = availableMimeTypes.length > 0 ? availableMimeTypes[0] : 'audio/webm';
       }
       console.log("Using MIME type:", mimeType);
     }
     
-    // Determine recorder type based on MIME type
-    let recorderType;
-    if (mimeType.includes('mp3') || mimeType.includes('mpeg')) {
-      recorderType = RecordRTC.MediaStreamRecorder; // Better for MP3
-      console.log("Using MediaStreamRecorder for MP3");
-    } else {
-      recorderType = RecordRTC.StereoAudioRecorder; // For WAV/WebM
-      console.log("Using StereoAudioRecorder for WAV/WebM");
-    }
-    
-    // Use the most compatible format for AssemblyAI
+    // RecordRTC settings for best audio quality
     const recorder = new RecordRTC(stream, {
       type: 'audio',
       mimeType: mimeType,
-      recorderType: recorderType,
+      recorderType: RecordRTC.StereoAudioRecorder,
       numberOfAudioChannels: 1,     // Mono
-      desiredSampRate: 44100,       // CD quality (AssemblyAI handles this well)
-      sampleRate: 44100,            // Be explicit about sample rate
-      timeSlice: 500,               // Larger chunks for better encoding
-      disableLogs: false,           // Enable logs
-      bufferSize: 16384,            // Larger buffer for better encoding
-      // Important settings for common format issues
+      desiredSampRate: 44100,       // Higher sample rate for better quality
+      sampleRate: 44100,            // Consistent with desired rate
+      timeSlice: 500,               // Larger time slice for better quality
+      disableLogs: false,           // Enable logs for debugging
+      bufferSize: 16384,            // Larger buffer size for less distortion
+      // Better quality settings
       bitRate: 128,                 // Higher bitrate for better quality
       audioBitsPerSecond: 128000,   // Explicit bitrate setting
       ondataavailable: (blob) => {
@@ -194,23 +185,35 @@ export const stopRecording = async (recorder, stream) => {
           return reject(new Error("Recording failed to produce valid audio data. Please try again or check your microphone."));
         }
         
-        // Create a more compatible file format
-        const mimeType = blob.type || 'audio/wav';
-        let filename;
+        // Create a proper file with the correct format and extension
+        let fileExtension = 'webm';
+        let mimeType = blob.type || 'audio/webm';
         
-        // Use appropriate extension based on mime type
+        // Set correct extension based on mime type
         if (mimeType.includes('mp3') || mimeType.includes('mpeg')) {
-          filename = 'recording.mp3';
+          fileExtension = 'mp3';
+          mimeType = 'audio/mpeg';
         } else if (mimeType.includes('wav')) {
-          filename = 'recording.wav';
-        } else if (mimeType.includes('webm')) {
-          filename = 'recording.webm';
+          fileExtension = 'wav';
+          mimeType = 'audio/wav';
+        } else if (mimeType.includes('m4a') || mimeType.includes('mp4')) {
+          fileExtension = 'mp4';
+          mimeType = 'audio/mp4';
         } else {
-          filename = 'recording.mp3'; // Default to mp3
+          // Default to WebM which is well supported
+          fileExtension = 'webm';
+          mimeType = 'audio/webm';
         }
         
         // Create a file with the explicit content type
-        const file = new File([blob], filename, { type: mimeType });
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `recording-${timestamp}.${fileExtension}`;
+        
+        const file = new File([blob], filename, { 
+          type: mimeType,
+          lastModified: Date.now()
+        });
+        
         console.log("Created file:", file.name, file.type, file.size, "bytes");
         
         // Stop all audio tracks
@@ -374,21 +377,56 @@ export const startRecordingNative = async (onDataAvailable) => {
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
-        sampleRate: 16000
+        sampleRate: 44100, // Higher sample rate for better quality
+        channelCount: 1    // Mono audio
       } 
     });
+    
+    // Log the actual track settings
+    const audioTrack = stream.getAudioTracks()[0];
+    if (audioTrack) {
+      const settings = audioTrack.getSettings();
+      console.log("Native MediaRecorder track settings:", settings);
+    }
     
     // Get available MIME types
     const availableMimeTypes = getAvailableMimeTypes();
     
-    // Choose a format (WebM is most widely supported)
-    const mimeType = availableMimeTypes.includes('audio/webm') ? 
-      'audio/webm' : (availableMimeTypes[0] || '');
+    // Choose the format with best audio quality
+    let mimeType = '';
+    
+    // Prefer specific codecs in order of quality
+    const preferredTypes = [
+      'audio/wav',
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4;codecs=mp4a.40.2', // AAC codec
+      'audio/mpeg',
+      'audio/mp3'
+    ];
+    
+    // Find the first supported MIME type
+    for (const type of preferredTypes) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        mimeType = type;
+        break;
+      }
+    }
+    
+    // If none of our preferred types are supported, use any available type
+    if (!mimeType && availableMimeTypes.length > 0) {
+      mimeType = availableMimeTypes[0];
+    }
     
     // Options for MediaRecorder
     const options = {};
     if (mimeType) {
       options.mimeType = mimeType;
+    }
+    
+    // Set higher bitrate if supported
+    if ('audioBitsPerSecond' in MediaRecorder) {
+      options.audioBitsPerSecond = 128000;
     }
     
     console.log("Using native MediaRecorder with options:", options);
@@ -399,7 +437,7 @@ export const startRecordingNative = async (onDataAvailable) => {
     // Array to store audio chunks
     const chunks = [];
     
-    // Listen for data
+    // Listen for data - use optimal chunk size for better quality
     recorder.ondataavailable = (event) => {
       if (event.data.size > 0) {
         chunks.push(event.data);
@@ -415,8 +453,8 @@ export const startRecordingNative = async (onDataAvailable) => {
       console.log("MediaRecorder stopped");
     };
     
-    // Start recording, capture data every 250ms
-    recorder.start(250);
+    // Start recording, capture data less frequently for better quality
+    recorder.start(500);
     
     return { recorder, stream, chunks };
   } catch (error) {
@@ -430,17 +468,38 @@ export const stopRecordingNative = async (recorder, stream, chunks) => {
   console.log("Stopping native MediaRecorder...");
   return new Promise((resolve) => {
     recorder.onstop = () => {
+      // Determine the best MIME type for the audio file
       const mimeType = recorder.mimeType || 'audio/webm';
       console.log("Creating blob from", chunks.length, "chunks, type:", mimeType);
       
+      // Create blob with the correct MIME type
       const blob = new Blob(chunks, { type: mimeType });
       console.log("Created blob:", blob.size, "bytes, type:", blob.type);
       
-      const extension = mimeType.includes('webm') ? 'webm' : 
-                        mimeType.includes('mp4') ? 'mp4' : 
-                        mimeType.includes('ogg') ? 'ogg' : 'webm';
-                        
-      const file = blobToFile(blob, `recording.${extension}`);
+      // Determine the appropriate file extension
+      let extension = 'webm'; // Default
+      if (mimeType.includes('mp3') || mimeType.includes('mpeg')) {
+        extension = 'mp3';
+      } else if (mimeType.includes('wav')) {
+        extension = 'wav';
+      } else if (mimeType.includes('m4a') || mimeType.includes('mp4')) {
+        extension = 'mp4';
+      } else if (mimeType.includes('ogg')) {
+        extension = 'ogg';
+      } else if (mimeType.includes('webm')) {
+        extension = 'webm';
+      }
+      
+      // Create a timestamped filename for uniqueness
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `recording-${timestamp}.${extension}`;
+      
+      // Create a proper File object with the right metadata
+      const file = new File([blob], filename, { 
+        type: mimeType,
+        lastModified: Date.now()
+      });
+      
       console.log("Created file:", file.name, file.type, file.size);
       
       // Stop all tracks

@@ -5,9 +5,6 @@
 
 import * as transcriptionService from './services/transcriptionServiceManager';
 
-// Global reference to track if modal is open
-let isFallbackModalOpen = false;
-
 // Function to check if API key exists and initialize if found
 export const checkApiKey = (handleApiKeyChange) => {
   // Initialize all service API keys from localStorage

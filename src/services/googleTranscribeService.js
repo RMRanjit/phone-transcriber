@@ -143,10 +143,10 @@ export const processDiarizedTranscript = (result) => {
 
 // Generate summary (using OpenAI as a fallback since Google doesn't have a built-in summarization)
 export const generateSummary = async (transcript) => {
-  if (!API_KEY) throw new Error('API key not set');
-
   try {
-    // For now, return a formatted summary message that matches our UI expectations
+    console.log("Generating fallback summary for Google Speech-to-Text...");
+    
+    // Google Speech doesn't have a summary feature, so we return a static message
     return `Summary:
 This conversation was transcribed using Google Speech-to-Text. The complete transcript is available in the Transcript tab.
 
@@ -156,7 +156,13 @@ Action Required:
 3. Consider using AssemblyAI for transcripts that require automatic summarization`;
   } catch (error) {
     console.error('Error generating summary:', error);
-    throw error;
+    return `Summary:
+An error occurred while generating the summary.
+
+Action Required:
+1. Check your API configuration
+2. Try processing the audio again
+3. Consider using a different transcription service`;
   }
 };
 
@@ -171,4 +177,112 @@ export const getTranscription = async () => {
 
 export const pollTranscription = async () => {
   throw new Error('Google Transcribe uses a different workflow - use processAudioComplete instead');
+};
+
+// Google real-time transcription (simulated)
+export const connectRealtimeStream = (onMessage, onError) => {
+  if (!API_KEY) throw new Error('API key not set');
+
+  try {
+    console.log('Establishing Google Speech WebSocket connection simulation...');
+    
+    // Google Cloud Speech-to-Text does have streaming capabilities
+    // but we'll simulate it here with a mock WebSocket
+    
+    // Create a mock WebSocket with the necessary interface
+    const mockSocket = {
+      readyState: WebSocket.OPEN,
+      buffer: [],
+      lastTimestamp: Date.now(),
+      
+      // Simulated send method
+      send: (data) => {
+        if (typeof data === 'string') {
+          // This is a control message (like KeepAlive)
+          try {
+            const msg = JSON.parse(data);
+            if (msg.message_type === 'KeepAlive') {
+              console.log('Google mock: received keep-alive ping');
+            }
+          } catch (e) {
+            console.warn('Google mock: received invalid JSON message', e);
+          }
+          return;
+        }
+        
+        // For audio data
+        mockSocket.buffer.push(data);
+        
+        // Process after enough data
+        if (mockSocket.buffer.length % 4 === 0) {
+          const now = Date.now();
+          
+          // Google-specific simulated words
+          const phrases = [
+            "Google transcription",
+            "testing the microphone",
+            "speech to text",
+            "this is a simulation", 
+            "of real-time transcription"
+          ];
+          
+          const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+          
+          // Send a partial transcript
+          if (onMessage) {
+            onMessage({
+              message_type: 'PartialTranscript',
+              text: phrase
+            });
+          }
+          
+          // Periodically send a final transcript
+          if (mockSocket.buffer.length % 12 === 0) {
+            if (onMessage) {
+              onMessage({
+                message_type: 'FinalTranscript',
+                text: phrase,
+                audio_start: mockSocket.lastTimestamp,
+                audio_end: now
+              });
+              mockSocket.lastTimestamp = now;
+            }
+          }
+        }
+      },
+      
+      // Close method
+      close: () => {
+        console.log('Google mock WebSocket closed');
+        mockSocket.readyState = WebSocket.CLOSED;
+        if (onMessage) {
+          onMessage({
+            message_type: 'SessionTerminated',
+            status: 'closed'
+          });
+        }
+      }
+    };
+    
+    // Simulate connection events
+    setTimeout(() => {
+      if (onMessage) {
+        onMessage({
+          message_type: 'Connected',
+          message: 'Connected to Google Speech-to-Text service (simulated)'
+        });
+        
+        onMessage({
+          message_type: 'SessionBegins',
+          message: 'Google Speech-to-Text session started (simulated)'
+        });
+      }
+    }, 500);
+    
+    return mockSocket;
+  } catch (error) {
+    console.error('Error creating Google WebSocket:', error);
+    if (onError) onError(error);
+    throw error;
+  }
 }; 
